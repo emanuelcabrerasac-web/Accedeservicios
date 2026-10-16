@@ -1,1505 +1,1945 @@
-const currency = new Intl.NumberFormat("es-PE", { maximumFractionDigits: 0 });
-const moneyFormat = new Intl.NumberFormat("es-PE", {
-  style: "currency",
-  currency: "PEN",
-  maximumFractionDigits: 0,
-});
-const dateTime = new Intl.DateTimeFormat("es-PE", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
-const shortDate = new Intl.DateTimeFormat("es-PE", {
-  day: "2-digit",
-  month: "short",
-});
-
-const initialData = {
-  products: [
-    {
-      id: "P-1001",
-      name: "Martillo carpintero 16 oz",
-      sku: "MAR-16OZ",
-      category: "Herramientas manuales",
-      price: 6990,
-      cost: 4200,
-      stock: 18,
-      minStock: 10,
-    },
-    {
-      id: "P-1002",
-      name: "Taladro percutor 650 W",
-      sku: "TAL-650",
-      category: "Herramientas eléctricas",
-      price: 42900,
-      cost: 29900,
-      stock: 7,
-      minStock: 8,
-    },
-    {
-      id: "P-1003",
-      name: "Set de brocas y puntas",
-      sku: "BRO-SET",
-      category: "Accesorios",
-      price: 8900,
-      cost: 4900,
-      stock: 24,
-      minStock: 8,
-    },
-    {
-      id: "P-1004",
-      name: "Alargador eléctrico 10 m",
-      sku: "ALA-10M",
-      category: "Electricidad",
-      price: 16900,
-      cost: 9900,
-      stock: 4,
-      minStock: 6,
-    },
-    {
-      id: "P-1005",
-      name: "Tornillos para madera · 100 u",
-      sku: "TOR-MAD100",
-      category: "Fijaciones",
-      price: 3200,
-      cost: 1600,
-      stock: 0,
-      minStock: 6,
-    },
-    {
-      id: "P-1006",
-      name: "Guantes de seguridad",
-      sku: "GUA-SEG",
-      category: "Seguridad",
-      price: 5900,
-      cost: 3100,
-      stock: 15,
-      minStock: 5,
-    },
-  ],
-  movements: [],
-  sales: [],
-  expenses: [],
-  invoices: [],
-  nextSale: 104,
-  nextInvoice: 1,
-};
-
-function createInitialData() {
-  const data = structuredClone(initialData);
-  const now = Date.now();
-  data.movements = [
-    {
-      id: "M-001",
-      productId: "P-1001",
-      type: "Entrada",
-      quantity: 12,
-      reference: "OC-2026-041",
-      detail: "Reposición de proveedor",
-      date: new Date(now - 1000 * 60 * 60 * 5).toISOString(),
-    },
-    {
-      id: "M-002",
-      productId: "P-1002",
-      type: "Venta",
-      quantity: 2,
-      reference: "V-00103",
-      detail: "Venta de mostrador",
-      date: new Date(now - 1000 * 60 * 60 * 3).toISOString(),
-    },
-    {
-      id: "M-003",
-      productId: "P-1004",
-      type: "Salida",
-      quantity: 1,
-      reference: "AJ-0008",
-      detail: "Muestra para cliente",
-      date: new Date(now - 1000 * 60 * 45).toISOString(),
-    },
-  ];
-  data.sales = [
-    {
-      id: "V-00103",
-      productId: "P-1002",
-      quantity: 2,
-      unitPrice: 42900,
-      total: 85800,
-      date: new Date(now - 1000 * 60 * 60 * 3).toISOString(),
-      detail: "Venta de mostrador",
-    },
-  ];
-  return data;
+:root {
+  --paper: #f4f7fb;
+  --surface: #fff;
+  --ink: #202d3e;
+  --muted: #778597;
+  --line: #e1e8f0;
+  --green: #1555a6;
+  --green-dark: #10386d;
+  --green-soft: #e8f0fb;
+  --lime: #fff;
+  --red: #b34c44;
+  --red-soft: #fbefed;
+  --amber: #9a742b;
+  --amber-soft: #f7f1e3;
+  --nav-width: 246px;
+  --shadow: 0 12px 36px rgba(19, 54, 100, 0.13);
 }
-
-let data = createInitialData();
-let toastTimer;
-
-function escapeHtml(value = "") {
-  return String(value).replace(
-    /[&<>"']/g,
-    (character) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
-        character
-      ],
-  );
+* {
+  box-sizing: border-box;
 }
-
-function money(value) {
-  return moneyFormat.format(Number(value) || 0);
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "DM Sans", sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
 }
-
-function dateOnly(value) {
-  return new Date(value).toISOString().slice(0, 10);
+button,
+input,
+select {
+  font: inherit;
 }
-
-function productFor(id) {
-  return data.products.find((product) => product.id === id);
+button {
+  cursor: pointer;
 }
-
-function expenseFor(id) {
-  return data.expenses.find((expense) => expense.id === id);
+.app-shell {
+  min-height: 100vh;
 }
-
-function statusFor(product) {
-  if (product.stock <= 0) return ["Agotado", "out"];
-  if (product.stock <= product.minStock) return ["Stock bajo", "low"];
-  return ["En stock", "ok"];
+.workspace {
+  margin-right: var(--nav-width);
+  padding: 0 46px;
+  min-height: 100vh;
+  max-width: 1750px;
 }
-
-function movementSymbol(type) {
-  return type === "Entrada"
-    ? ["+", "in"]
-    : type === "Venta"
-      ? ["↗", "sale"]
-      : ["−", "out"];
+.topbar {
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e2e6df;
 }
-
-function render() {
-  renderDashboard();
-  renderInventory();
-  renderMovements();
-  renderSales();
-  renderHistory();
-  renderReports();
-  renderInvoices();
-  updateClock();
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
 }
-
-function statCard(label, value, note, icon) {
-  return `<article class="stat-card"><div class="stat-top"><span>${label}</span><span class="stat-icon">${icon}</span></div><div class="stat-value">${value}</div><div class="stat-note">${note}</div></article>`;
+.breadcrumb strong {
+  color: #34443a;
+  font-weight: 600;
 }
-
-function renderDashboard() {
-  const low = data.products.filter(
-    (product) => product.stock <= product.minStock,
-  );
-  const totalUnits = data.products.reduce(
-    (sum, product) => sum + product.stock,
-    0,
-  );
-  const inventoryValue = data.products.reduce(
-    (sum, product) => sum + product.stock * product.cost,
-    0,
-  );
-  const today = new Date().toDateString();
-  const todaysSales = data.sales.filter(
-    (sale) => new Date(sale.date).toDateString() === today,
-  );
-  const revenue = todaysSales.reduce((sum, sale) => sum + sale.total, 0);
-  document.querySelector("#dashboard-stats").innerHTML = [
-    statCard(
-      "Productos activos",
-      data.products.length,
-      `<strong>${low.length} requieren atención</strong>`,
-      "▦",
-    ),
-    statCard(
-      "Unidades disponibles",
-      currency.format(totalUnits),
-      "En todos los productos",
-      "◫",
-    ),
-    statCard(
-      "Valor del inventario",
-      money(inventoryValue),
-      "A costo de compra",
-      "$",
-    ),
-    statCard(
-      "Ventas de hoy",
-      money(revenue),
-      `${todaysSales.length} operaciones registradas`,
-      "↗",
-    ),
-  ].join("");
-  document.querySelector("#low-stock-count").textContent = low.length;
-  document.querySelector("#low-stock-list").innerHTML = low.length
-    ? low
-        .slice(0, 4)
-        .map(
-          (product) =>
-            `<div class="low-stock-item"><span class="product-chip">${escapeHtml(product.name.slice(0, 2).toUpperCase())}</span><div class="low-stock-meta"><strong>${escapeHtml(product.name)}</strong><span>Mínimo ${product.minStock} unidades</span></div><span class="low-stock-value">${product.stock} uds.</span></div>`,
-        )
-        .join("")
-    : '<div class="empty-state">Todo el inventario está en niveles saludables.</div>';
-  document.querySelector("#recent-movements").innerHTML = recentMovements(5);
-  document.querySelector("#banner-date").textContent = new Intl.DateTimeFormat(
-    "es-CL",
-    { day: "2-digit", month: "short", year: "numeric" },
-  )
-    .format(new Date())
-    .toUpperCase();
+.breadcrumb-divider {
+  color: #b4bbb5;
 }
-
-function recentMovements(limit) {
-  return (
-    [...data.movements]
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .slice(0, limit)
-      .map((movement) => {
-        const product = productFor(movement.productId);
-        const [symbol, color] = movementSymbol(movement.type);
-        const sign = movement.type === "Entrada" ? "+" : "−";
-        return `<div class="recent-item"><span class="movement-symbol ${color}">${symbol}</span><div class="recent-meta"><strong>${escapeHtml(product?.name || "Producto eliminado")}</strong><span>${escapeHtml(movement.type)} · ${dateTime.format(new Date(movement.date))}</span></div><span class="recent-amount">${sign}${movement.quantity}</span></div>`;
-      })
-      .join("") ||
-    '<div class="empty-state">Los movimientos recientes aparecerán aquí.</div>'
-  );
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
 }
-
-function renderInventory() {
-  const query = (document.querySelector("#inventory-search")?.value || "")
-    .trim()
-    .toLowerCase();
-  const filter = document.querySelector("#inventory-filter")?.value || "all";
-  const products = data.products.filter((product) => {
-    const matchesText = `${product.name} ${product.sku} ${product.category}`
-      .toLowerCase()
-      .includes(query);
-    const matchesFilter =
-      filter === "all" ||
-      (filter === "low" &&
-        product.stock > 0 &&
-        product.stock <= product.minStock) ||
-      (filter === "out" && product.stock <= 0);
-    return matchesText && matchesFilter;
-  });
-  document.querySelector("#inventory-count").textContent =
-    `${products.length} productos`;
-  document
-    .querySelector("#inventory-empty")
-    .classList.toggle("hidden", products.length > 0);
-  document.querySelector("#inventory-rows").innerHTML = products
-    .map((product) => {
-      const [label, state] = statusFor(product);
-      const width = Math.min(
-        100,
-        Math.round((product.stock / Math.max(product.minStock * 2, 1)) * 100),
-      );
-      return `<tr><td><strong>${escapeHtml(product.name)}</strong></td><td class="sku">${escapeHtml(product.sku)}</td><td>${escapeHtml(product.category)}</td><td>${money(product.price)}</td><td><div class="stock-cell"><span>${product.stock} uds.</span><span class="stock-track"><span class="stock-fill ${state}" style="width:${width}%"></span></span></div></td><td><span class="status ${state}">${label}</span></td><td><button class="row-menu" data-action="product-menu" data-id="${escapeHtml(product.id)}" aria-label="Acciones para ${escapeHtml(product.name)}">···</button></td></tr>`;
-    })
-    .join("");
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #6caa76;
+  display: inline-block;
+  box-shadow: 0 0 0 3px #e3eee2;
 }
-
-function movementRowsFor(search, filter) {
-  const query = (search || "").trim().toLowerCase();
-  return [...data.movements]
-    .filter((movement) => {
-      const product = productFor(movement.productId);
-      const text =
-        `${product?.name || ""} ${movement.reference} ${movement.detail}`.toLowerCase();
-      return (
-        text.includes(query) && (filter === "all" || movement.type === filter)
-      );
-    })
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
+.avatar,
+.user-avatar {
+  border: 0;
+  background: #dce7d7;
+  color: #35573f;
+  border-radius: 50%;
+  width: 31px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  font-family: "Manrope", sans-serif;
+  font-weight: 800;
+  margin-left: 9px;
 }
-
-function movementRowsHtml(movements) {
-  return movements
-    .map((movement) => {
-      const product = productFor(movement.productId);
-      const [symbol, color] = movementSymbol(movement.type);
-      const quantity =
-        movement.type === "Entrada"
-          ? `+${movement.quantity}`
-          : `−${movement.quantity}`;
-      return `<tr><td>${dateTime.format(new Date(movement.date))}</td><td><strong>${escapeHtml(product?.name || "Producto eliminado")}</strong><small>${escapeHtml(product?.sku || "")}</small></td><td><span class="movement-symbol ${color}">${symbol}</span> ${escapeHtml(movement.type)}</td><td>${quantity} uds.</td><td class="sku">${escapeHtml(movement.reference)}</td><td>${escapeHtml(movement.detail || "—")}</td></tr>`;
-    })
-    .join("");
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font:
+    800 19px "Manrope",
+    sans-serif;
+  letter-spacing: -0.5px;
 }
-
-function renderMovements() {
-  const movements = movementRowsFor(
-    document.querySelector("#movement-search")?.value,
-    document.querySelector("#movement-filter")?.value || "all",
-  );
-  document.querySelector("#movement-count").textContent =
-    `${movements.length} registros`;
-  document
-    .querySelector("#movement-empty")
-    .classList.toggle("hidden", movements.length > 0);
-  document.querySelector("#movement-rows").innerHTML =
-    movementRowsHtml(movements);
+.brand-mark {
+  width: 31px;
+  height: 31px;
+  border-radius: 9px;
+  background: var(--green);
+  color: white;
+  display: grid;
+  place-items: center;
+  font:
+    800 17px "Manrope",
+    sans-serif;
 }
-
-function renderSales() {
-  const today = new Date().toDateString();
-  const todaysSales = data.sales.filter(
-    (sale) => new Date(sale.date).toDateString() === today,
-  );
-  const query = (
-    document.querySelector("#sales-search")?.value || ""
-  ).toLowerCase();
-  const sales = [...data.sales]
-    .filter((sale) =>
-      `${sale.id} ${productFor(sale.productId)?.name || ""}`
-        .toLowerCase()
-        .includes(query),
-    )
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
-  const units = todaysSales.reduce((sum, sale) => sum + sale.quantity, 0);
-  const total = todaysSales.reduce((sum, sale) => sum + sale.total, 0);
-  document.querySelector("#sales-stats").innerHTML = [
-    statCard(
-      "Ventas de hoy",
-      todaysSales.length,
-      "Operaciones registradas",
-      "↗",
-    ),
-    statCard(
-      "Unidades vendidas",
-      currency.format(units),
-      "Durante el día de hoy",
-      "▦",
-    ),
-    statCard("Ingresos de hoy", money(total), "Importe bruto registrado", "$"),
-  ].join("");
-  document
-    .querySelector("#sales-empty")
-    .classList.toggle("hidden", sales.length > 0);
-  document.querySelector("#sales-rows").innerHTML = sales
-    .map(
-      (sale) =>
-        `<tr><td>${dateTime.format(new Date(sale.date))}</td><td><strong>${escapeHtml(sale.id)}</strong></td><td>${escapeHtml(productFor(sale.productId)?.name || "Producto eliminado")}</td><td>${sale.quantity}</td><td>${money(sale.unitPrice)}</td><td><strong>${money(sale.total)}</strong></td></tr>`,
-    )
-    .join("");
+.brand-mobile {
+  display: none;
 }
-
-function renderHistory() {
-  const filter = document.querySelector("#history-filter")?.value || "all";
-  const movements = movementRowsFor(
-    document.querySelector("#history-search")?.value,
-    filter,
-  );
-  const totals = ["Entrada", "Salida", "Venta"].map((type) => [
-    type,
-    data.movements.filter((movement) => movement.type === type).length,
-  ]);
-  document.querySelector("#history-summary").innerHTML =
-    totals
-      .map(
-        ([label, count], index) =>
-          `${index ? '<span class="history-divider"></span>' : ""}<div class="history-metric"><strong>${count}</strong><span>${label}${count === 1 ? "" : "s"}</span></div>`,
-      )
-      .join("") +
-    '<span class="history-divider"></span><div class="history-metric"><strong>' +
-    data.movements.length +
-    "</strong><span>Registros totales</span></div>";
-  document.querySelector("#history-count").textContent =
-    `${movements.length} registros`;
-  document
-    .querySelector("#history-empty")
-    .classList.toggle("hidden", movements.length > 0);
-  document.querySelector("#history-rows").innerHTML =
-    movementRowsHtml(movements);
+.side-nav {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: var(--nav-width);
+  height: 100vh;
+  background: #fff;
+  border-left: 1px solid var(--line);
+  padding: 27px 17px 18px;
+  display: flex;
+  flex-direction: column;
+  z-index: 5;
 }
-
-function formatReportPeriod(range, start, end) {
-  const startLabel = start
-    ? new Intl.DateTimeFormat("es-PE", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }).format(start)
-    : "el inicio";
-  const endLabel = end
-    ? new Intl.DateTimeFormat("es-PE", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }).format(end)
-    : "hoy";
-  return `${startLabel} · ${endLabel}`;
+.side-nav > .brand {
+  padding: 0 10px 39px;
 }
-
-function reportRangeFor(period) {
-  const now = new Date();
-  const end = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    23,
-    59,
-    59,
-    999,
-  );
-  const start = new Date(end);
-
-  if (period === "daily") {
-    start.setHours(0, 0, 0, 0);
-  } else if (period === "weekly") {
-    start.setDate(end.getDate() - 6);
-    start.setHours(0, 0, 0, 0);
-  } else if (period === "monthly") {
-    start.setDate(1);
-    start.setHours(0, 0, 0, 0);
-  } else if (period === "yearly") {
-    start.setMonth(0, 1);
-    start.setHours(0, 0, 0, 0);
-  } else {
-    const startInput = document.querySelector("#report-start");
-    const endInput = document.querySelector("#report-end");
-    if (startInput.value)
-      start.setTime(new Date(`${startInput.value}T00:00:00`).getTime());
-    if (endInput.value)
-      end.setTime(new Date(`${endInput.value}T23:59:59.999`).getTime());
+.nav-caption {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.15px;
+  color: #a0a8a2;
+  padding: 0 11px 11px;
+}
+.side-nav nav {
+  display: grid;
+  gap: 4px;
+}
+.nav-link {
+  border: 0;
+  background: transparent;
+  color: #66726a;
+  width: 100%;
+  height: 42px;
+  padding: 0 11px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  font-size: 12px;
+  border-radius: 5px;
+  position: relative;
+  transition:
+    background 0.18s,
+    color 0.18s;
+}
+.nav-link:hover {
+  background: #f5f7f3;
+  color: var(--ink);
+}
+.nav-link.active {
+  background: #eaf2ec;
+  color: #23533b;
+  font-weight: 700;
+}
+.nav-icon {
+  font-size: 18px;
+  line-height: 1;
+  width: 20px;
+  text-align: center;
+  color: #77847a;
+}
+.nav-link.active .nav-icon {
+  color: var(--green);
+}
+.nav-active-mark {
+  position: absolute;
+  right: 0;
+  top: 11px;
+  width: 3px;
+  height: 20px;
+  border-radius: 3px 0 0 3px;
+  background: transparent;
+}
+.nav-link.active .nav-active-mark {
+  background: var(--green);
+}
+.nav-caption-lower {
+  margin-top: 31px;
+}
+.nav-bottom {
+  margin-top: auto;
+}
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding: 18px 5px 17px;
+}
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  background: #eff2dc;
+  color: #657332;
+}
+.nav-user strong,
+.nav-user small {
+  display: block;
+}
+.nav-user strong {
+  font-size: 11px;
+  font-weight: 700;
+}
+.nav-user small {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.user-menu {
+  margin-left: auto;
+  font-size: 18px;
+  color: #8b948d;
+  letter-spacing: 2px;
+}
+.nav-version {
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: #a2aaa3;
+  padding: 0 5px;
+}
+.nav-version span {
+  padding: 0 4px;
+  color: #c1c7c0;
+}
+.view {
+  display: none;
+  animation: rise-in 0.3s ease both;
+}
+.view.active {
+  display: block;
+}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
   }
-
-  return { start, end };
-}
-
-function reportDataFor(period) {
-  const { start, end } = reportRangeFor(period);
-  const sales = data.sales.filter(
-    (sale) => new Date(sale.date) >= start && new Date(sale.date) <= end,
-  );
-  const expenses = data.expenses.filter(
-    (expense) =>
-      new Date(expense.date) >= start && new Date(expense.date) <= end,
-  );
-  const revenue = sales.reduce((sum, sale) => sum + sale.total, 0);
-  const cost = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const units = sales.reduce((sum, sale) => sum + sale.quantity, 0);
-  return {
-    start,
-    end,
-    sales,
-    expenses,
-    revenue,
-    cost,
-    units,
-    profit: revenue - cost,
-  };
-}
-
-function reportBuckets(period, start, end) {
-  const bucketCount =
-    period === "weekly"
-      ? 7
-      : period === "monthly"
-        ? 12
-        : period === "yearly"
-          ? 12
-          : Math.min(30, Math.max(1, Math.ceil((end - start) / 86400000) + 1));
-  const buckets = Array.from({ length: bucketCount }, (_, index) => {
-    const date = new Date(start);
-    if (period === "weekly") date.setDate(start.getDate() + index);
-    else if (period === "monthly") date.setMonth(start.getMonth() + index, 1);
-    else if (period === "yearly") date.setMonth(start.getMonth() + index);
-    else date.setDate(start.getDate() + index);
-    return { date, sales: 0, expenses: 0, profit: 0 };
-  });
-
-  for (const sale of data.sales) {
-    const saleDate = new Date(sale.date);
-    if (saleDate < start || saleDate > end) continue;
-    const index =
-      period === "monthly"
-        ? saleDate.getMonth() -
-          start.getMonth() +
-          (saleDate.getFullYear() - start.getFullYear()) * 12
-        : period === "yearly"
-          ? saleDate.getMonth() - start.getMonth()
-          : Math.floor((saleDate - start) / 86400000);
-    const bucket = buckets[Math.max(0, Math.min(buckets.length - 1, index))];
-    if (bucket) {
-      bucket.sales += sale.total;
-      bucket.profit += sale.total;
-    }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-
-  for (const expense of data.expenses) {
-    const expenseDate = new Date(expense.date);
-    if (expenseDate < start || expenseDate > end) continue;
-    const index =
-      period === "monthly"
-        ? expenseDate.getMonth() -
-          start.getMonth() +
-          (expenseDate.getFullYear() - start.getFullYear()) * 12
-        : period === "yearly"
-          ? expenseDate.getMonth() - start.getMonth()
-          : Math.floor((expenseDate - start) / 86400000);
-    const bucket = buckets[Math.max(0, Math.min(buckets.length - 1, index))];
-    if (bucket) {
-      bucket.expenses += expense.amount;
-      bucket.profit -= expense.amount;
-    }
-  }
-
-  return buckets.map((bucket) => ({
-    label:
-      period === "monthly"
-        ? new Intl.DateTimeFormat("es-PE", { month: "short" }).format(
-            bucket.date,
-          )
-        : period === "yearly"
-          ? new Intl.DateTimeFormat("es-PE", { month: "short" }).format(
-              bucket.date,
-            )
-          : new Intl.DateTimeFormat("es-PE", {
-              day: "2-digit",
-              month: "short",
-            }).format(bucket.date),
-    sales: bucket.sales,
-    expenses: bucket.expenses,
-    profit: bucket.profit,
-  }));
 }
-
-function chartPoints(series, width, height, padding, max) {
-  if (!series.length) return "";
-  const range = max || 1;
-  return series
-    .map((value, index) => {
-      const x =
-        padding +
-        index * ((width - padding * 2) / Math.max(series.length - 1, 1));
-      const y = height - padding - (value / range) * (height - padding * 2);
-      return `${index === 0 ? "M" : "L"} ${x} ${y}`;
-    })
-    .join(" ");
+.page-heading {
+  padding: 34px 0 23px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
 }
-
-function renderFinancialChart(period) {
-  const svg = document.querySelector("#financial-chart");
-  const { start, end } = reportRangeFor(period);
-  const buckets = reportBuckets(period, start, end);
-  const values = buckets.map((bucket) => bucket.sales);
-  const expenseValues = buckets.map((bucket) => bucket.expenses);
-  const profitValues = buckets.map((bucket) => bucket.profit);
-  const max = Math.max(...values, ...expenseValues, ...profitValues, 1);
-  const width = 760;
-  const height = 260;
-  const padding = 28;
-  const salesPath = chartPoints(values, width, height, padding, max);
-  const expensePath = chartPoints(expenseValues, width, height, padding, max);
-  const profitPath = chartPoints(profitValues, width, height, padding, max);
-  const steps = Array.from({ length: 5 }, (_, index) => {
-    const ratio = index / 4;
-    const value = max * (1 - ratio);
-    const y = padding + ratio * (height - padding * 2);
-    return `<line x1="${padding}" y1="${y}" x2="${width - padding}" y2="${y}" /><text x="8" y="${y + 4}">${money(value).replace("S/", "S/ ")}</text>`;
-  }).join("");
-  const xLabels = buckets
-    .map(
-      (bucket, index) =>
-        `<text x="${padding + index * ((width - padding * 2) / Math.max(buckets.length - 1, 1))}" y="245" text-anchor="middle">${escapeHtml(bucket.label)}</text>`,
-    )
-    .join("");
-  svg.innerHTML = `<g class="chart-grid">${steps}</g><path d="${salesPath}" fill="none" stroke="#1555a6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path><path d="${expensePath}" fill="none" stroke="#d36a5d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path><path d="${profitPath}" fill="none" stroke="#2a9d7d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>${xLabels}`;
+.eyebrow {
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  color: #829087;
+  font-weight: 700;
+  margin: 0 0 9px;
 }
-
-function renderReports() {
-  const period = document.querySelector("#report-period")?.value || "daily";
-  const report = reportDataFor(period);
-  const totalUnits = data.products.reduce(
-    (sum, product) => sum + product.stock,
-    0,
-  );
-  const inventoryValue = data.products.reduce(
-    (sum, product) => sum + product.stock * product.cost,
-    0,
-  );
-  const lowCount = data.products.filter(
-    (product) => product.stock <= product.minStock,
-  ).length;
-  document.querySelector("#report-stats").innerHTML = [
-    statCard(
-      "Ventas",
-      money(report.revenue),
-      `${report.sales.length} operaciones`,
-      "↗",
+.page-heading h1 {
+  font:
+    700 30px "Manrope",
+    sans-serif;
+  letter-spacing: -1px;
+  margin: 0;
+  color: #23312a;
+}
+.heading-copy {
+  margin: 7px 0 0;
+  color: #828b84;
+  font-size: 12px;
+}
+.button {
+  height: 39px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  padding: 0 15px;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  transition:
+    transform 0.15s,
+    background 0.15s;
+}
+.button:hover {
+  transform: translateY(-1px);
+}
+.button-dark {
+  background: var(--green);
+  color: white;
+}
+.button-dark:hover {
+  background: var(--green-dark);
+}
+.button-icon {
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1;
+}
+.button-outline {
+  background: transparent;
+  border-color: #d8ded7;
+  color: #35483b;
+}
+.button-outline:hover {
+  background: #fff;
+}
+.hero-banner {
+  height: 224px;
+  overflow: hidden;
+  background: var(--green-dark);
+  color: white;
+  position: relative;
+  padding: 27px 31px 20px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+}
+.hero-banner:before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(
+      120deg,
+      transparent 47%,
+      rgba(255, 255, 255, 0.035) 47.3%,
+      transparent 47.6%
     ),
-    statCard(
-      "Gastos",
-      money(report.cost),
-      `${report.expenses.length} registros`,
-      "−",
-    ),
-    statCard(
-      "Utilidad",
-      money(report.profit),
-      report.profit >= 0 ? "Resultado neto" : "Pérdida acumulada",
-      "◫",
-    ),
-    statCard(
-      "Unidades vendidas",
-      currency.format(report.units),
-      period === "custom"
-        ? "En el rango elegido"
-        : "En el período seleccionado",
-      "▦",
-    ),
-  ].join("");
-  document.querySelector("#report-generated-date").textContent =
-    dateTime.format(new Date());
-  document.querySelector("#report-range-title").textContent =
-    period === "daily"
-      ? "Resumen diario"
-      : period === "weekly"
-        ? "Resumen semanal"
-        : period === "monthly"
-          ? "Resumen mensual"
-          : period === "yearly"
-            ? "Resumen anual"
-            : "Reporte personalizado";
-  document.querySelector("#report-range-label").textContent =
-    `Desde ${formatReportPeriod(period, report.start, report.end)}`;
-  const products = [...data.products]
-    .sort((a, b) => b.stock - a.stock)
-    .slice(0, 5);
-  document.querySelector("#report-products").innerHTML =
-    products
-      .map(
-        (product, index) =>
-          `<div class="report-product"><span class="report-rank">0${index + 1}</span><div><strong>${escapeHtml(product.name)}</strong><small>${product.stock} unidades disponibles</small></div><span class="report-product-value">${money(product.stock * product.cost)}</span></div>`,
-      )
-      .join("") ||
-    '<div class="empty-state">No hay productos registrados.</div>';
-  document.querySelector("#report-activity").innerHTML = recentMovements(4);
-  document.querySelector("#print-report").dataset.lowCount = lowCount;
-  renderFinancialChart(period);
-  document.querySelector("#report-start").max = localDateValue();
-  document.querySelector("#report-end").max = localDateValue();
-  if (!document.querySelector("#report-start").value)
-    document.querySelector("#report-start").value = dateOnly(report.start);
-  if (!document.querySelector("#report-end").value)
-    document.querySelector("#report-end").value = dateOnly(report.end);
-  document
-    .querySelector("#report-period")
-    .setAttribute("aria-label", "Tipo de reporte");
-}
-
-function renderInvoices() {
-  const invoices = [...data.invoices].sort(
-    (a, b) => new Date(b.date) - new Date(a.date),
-  );
-  document.querySelector("#invoice-count").textContent =
-    `${invoices.length} emitidas`;
-  document
-    .querySelector("#invoice-empty")
-    .classList.toggle("hidden", invoices.length > 0);
-  document.querySelector("#invoice-rows").innerHTML = invoices
-    .slice(0, 20)
-    .map(
-      (invoice) =>
-        `<tr><td><strong>${escapeHtml(invoice.number)}</strong></td><td>${escapeHtml(new Intl.DateTimeFormat("es-CL").format(new Date(`${invoice.date}T12:00:00`)))}</td><td>${escapeHtml(invoice.customerName)}</td><td>${invoice.lines.reduce((sum, line) => sum + line.quantity, 0)}</td><td><strong>${money(invoice.total)}</strong></td><td><button class="button button-outline invoice-print-button" data-action="print-invoice" data-id="${escapeHtml(invoice.id)}">Imprimir</button></td></tr>`,
-    )
-    .join("");
-}
-
-function updateClock() {
-  document.querySelector("#today-label").textContent = new Intl.DateTimeFormat(
-    "es-CL",
-    { weekday: "long", day: "2-digit", month: "long" },
-  )
-    .format(new Date())
-    .toUpperCase();
-  document.querySelector("#footer-clock").textContent = new Intl.DateTimeFormat(
-    "es-CL",
-    { dateStyle: "medium" },
-  ).format(new Date());
-}
-
-function showView(name) {
-  document
-    .querySelectorAll(".view")
-    .forEach((view) =>
-      view.classList.toggle("active", view.id === `view-${name}`),
+    linear-gradient(
+      30deg,
+      transparent 69%,
+      rgba(255, 255, 255, 0.04) 69.2%,
+      transparent 69.5%
     );
-  document
-    .querySelectorAll(".nav-link")
-    .forEach((link) =>
-      link.classList.toggle("active", link.dataset.view === name),
-    );
-  const current =
-    document.querySelector(`.nav-link[data-view="${name}"] span:nth-child(2)`)
-      ?.textContent || "Resumen";
-  document.querySelector("#breadcrumb-current").textContent = current;
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  background-size:
+    47px 47px,
+    68px 68px;
+  opacity: 0.65;
 }
-
-function toast(message) {
-  const element = document.querySelector("#toast");
-  element.textContent = message;
-  element.classList.add("visible");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => element.classList.remove("visible"), 2600);
+.hero-copy {
+  position: relative;
+  z-index: 1;
 }
-
-function openModal(title, subtitle, fields, submitText, onSubmit) {
-  const root = document.querySelector("#modal-root");
-  root.innerHTML = `<div class="modal-backdrop" data-action="close-modal"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><header class="modal-head"><div><h2 id="modal-title">${title}</h2><p>${subtitle}</p></div><button class="modal-close" type="button" data-action="close-modal" aria-label="Cerrar">×</button></header><form class="modal-form"><div class="form-grid">${fields}</div><div class="modal-actions"><button type="button" class="button-muted" data-action="close-modal">Cancelar</button><button type="submit" class="button-submit">${submitText}</button></div></form></section></div>`;
-  root
-    .querySelector(".modal")
-    .addEventListener("click", (event) => event.stopPropagation());
-  root.querySelector(".modal-backdrop").addEventListener("click", (event) => {
-    if (event.target === event.currentTarget) closeModal();
-  });
-  root.querySelector("form").addEventListener("submit", (event) => {
-    event.preventDefault();
-    const values = Object.fromEntries(new FormData(event.currentTarget));
-    onSubmit(values);
-  });
-  root.querySelector("input,select")?.focus();
+.hero-kicker {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 8px;
+  letter-spacing: 1.4px;
+  color: #b6cbbd;
+  font-weight: 700;
 }
-
-function closeModal() {
-  document.querySelector("#modal-root").innerHTML = "";
+.live-dot.light {
+  background: var(--lime);
+  box-shadow: 0 0 0 3px rgba(213, 230, 109, 0.12);
+  width: 6px;
+  height: 6px;
 }
-
-function field(label, name, options = {}) {
-  const {
-    type = "text",
-    placeholder = "",
-    value = "",
-    min = "",
-    step = "",
-    required = true,
-    full = false,
-    hint = "",
-  } = options;
-  const fullClass = full ? " full" : "";
-  const requiredAttr = required ? "required" : "";
-  const input =
-    type === "select"
-      ? `<select name="${name}" ${requiredAttr}>${options.choices || ""}</select>`
-      : `<input name="${name}" type="${type}" placeholder="${placeholder}" value="${value}" ${min !== "" ? `min="${min}"` : ""} ${step !== "" ? `step="${step}"` : ""} ${requiredAttr}>`;
-  return `<div class="form-field${fullClass}"><label for="field-${name}">${label}</label>${input.replace(`name="${name}"`, `id="field-${name}" name="${name}"`)}${hint ? `<p class="form-hint">${hint}</p>` : ""}</div>`;
+.hero-copy h2 {
+  font:
+    700 25px/1.25 "Manrope",
+    sans-serif;
+  letter-spacing: -0.6px;
+  margin: 15px 0 8px;
 }
-
-function showProductForm() {
-  const fields =
-    field("Nombre del producto", "name", {
-      placeholder: "Ej. Martillo carpintero 16 oz",
-      full: true,
-    }) +
-    field("SKU", "sku", { placeholder: "Ej. CAF-250" }) +
-    field("Categoría", "category", {
-      placeholder: "Ej. Herramientas manuales",
-    }) +
-    field("Precio de venta", "price", { type: "number", min: "0", step: "1" }) +
-    field("Costo de compra", "cost", { type: "number", min: "0", step: "1" }) +
-    field("Stock inicial", "stock", {
-      type: "number",
-      min: "0",
-      step: "1",
-      value: "0",
-    }) +
-    field("Aviso de stock bajo", "minStock", {
-      type: "number",
-      min: "0",
-      step: "1",
-      value: "5",
-    });
-  openModal(
-    "Añadir producto",
-    "Completa los datos para crear una nueva referencia.",
-    fields,
-    "Guardar producto",
-    (values) => {
-      if (
-        data.products.some(
-          (product) =>
-            product.sku.toLowerCase() === values.sku.trim().toLowerCase(),
-        )
-      )
-        return toast("Ya existe un producto con ese SKU.");
-      const product = {
-        id: `P-${Date.now().toString().slice(-7)}`,
-        name: values.name.trim(),
-        sku: values.sku.trim().toUpperCase(),
-        category: values.category.trim(),
-        price: Number(values.price),
-        cost: Number(values.cost),
-        stock: Number(values.stock),
-        minStock: Number(values.minStock),
-      };
-      data.products.push(product);
-      if (product.stock > 0)
-        data.movements.push({
-          id: `M-${Date.now()}`,
-          productId: product.id,
-          type: "Entrada",
-          quantity: product.stock,
-          reference: "STOCK-INICIAL",
-          detail: "Carga inicial de inventario",
-          date: new Date().toISOString(),
-        });
-      closeModal();
-      render();
-      toast("Producto añadido al inventario.");
-    },
-  );
+.hero-copy h2 span {
+  color: var(--lime);
 }
-
-function showMovementForm() {
-  if (!data.products.length)
-    return toast("Añade un producto antes de registrar movimientos.");
-  const choices = data.products
-    .map(
-      (product) =>
-        `<option value="${escapeHtml(product.id)}">${escapeHtml(product.name)} · ${product.stock} uds.</option>`,
-    )
-    .join("");
-  const fields =
-    field("Tipo de movimiento", "type", {
-      type: "select",
-      choices:
-        '<option value="Entrada">Entrada</option><option value="Salida">Salida</option>',
-    }) +
-    field("Producto", "productId", { type: "select", choices }) +
-    field("Cantidad", "quantity", { type: "number", min: "1", step: "1" }) +
-    field("Referencia", "reference", {
-      placeholder: "Ej. OC-2026-042",
-      required: false,
-    }) +
-    field("Detalle", "detail", {
-      placeholder: "Motivo o comentario",
-      full: true,
-      required: false,
-    });
-  openModal(
-    "Registrar movimiento",
-    "Ajusta las existencias y deja constancia del motivo.",
-    fields,
-    "Guardar movimiento",
-    (values) => {
-      const product = productFor(values.productId);
-      const quantity = Number(values.quantity);
-      if (!product || !Number.isInteger(quantity) || quantity < 1)
-        return toast("Revisa el producto y la cantidad ingresada.");
-      if (values.type === "Salida" && quantity > product.stock)
-        return toast(`Solo hay ${product.stock} unidades disponibles.`);
-      product.stock += values.type === "Entrada" ? quantity : -quantity;
-      data.movements.push({
-        id: `M-${Date.now()}`,
-        productId: product.id,
-        type: values.type,
-        quantity,
-        reference:
-          values.reference.trim() ||
-          `MOV-${String(data.movements.length + 1).padStart(4, "0")}`,
-        detail:
-          values.detail.trim() ||
-          (values.type === "Entrada"
-            ? "Ingreso de inventario"
-            : "Salida de inventario"),
-        date: new Date().toISOString(),
-      });
-      closeModal();
-      render();
-      toast(`${values.type} de ${quantity} unidades registrada.`);
-    },
-  );
+.hero-copy p {
+  margin: 0;
+  color: #b8c9bd;
+  font-size: 11px;
 }
-
-function showSaleForm() {
-  const available = data.products.filter((product) => product.stock > 0);
-  if (!available.length)
-    return toast("No hay productos disponibles para vender.");
-  const choices = available
-    .map(
-      (product) =>
-        `<option value="${escapeHtml(product.id)}">${escapeHtml(product.name)} · ${product.stock} uds.</option>`,
-    )
-    .join("");
-  const fields =
-    field("Producto", "productId", { type: "select", choices, full: true }) +
-    field("Cantidad", "quantity", {
-      type: "number",
-      min: "1",
-      step: "1",
-      value: "1",
-    }) +
-    field("Precio unitario", "unitPrice", {
-      type: "number",
-      min: "0",
-      step: "1",
-      value: String(available[0].price),
-    }) +
-    field("Detalle", "detail", {
-      placeholder: "Ej. Venta de mostrador",
-      full: true,
-      required: false,
-    });
-  openModal(
-    "Registrar venta",
-    "La venta se registrará durante esta sesión y el stock se actualizará automáticamente.",
-    fields,
-    "Confirmar venta",
-    (values) => {
-      const product = productFor(values.productId);
-      const quantity = Number(values.quantity);
-      const unitPrice = Number(values.unitPrice);
-      if (
-        !product ||
-        !Number.isInteger(quantity) ||
-        quantity < 1 ||
-        unitPrice < 0
-      )
-        return toast("Revisa las cantidades y el precio ingresado.");
-      if (quantity > product.stock)
-        return toast(`Solo hay ${product.stock} unidades disponibles.`);
-      const saleId = `V-${String(data.nextSale++).padStart(5, "0")}`;
-      const date = new Date().toISOString();
-      const detail = values.detail.trim() || "Venta de mostrador";
-      const sale = {
-        id: saleId,
-        productId: product.id,
-        quantity,
-        unitPrice,
-        total: quantity * unitPrice,
-        date,
-        detail,
-      };
-      product.stock -= quantity;
-      data.sales.push(sale);
-      data.movements.push({
-        id: `M-${Date.now()}`,
-        productId: product.id,
-        type: "Venta",
-        quantity,
-        reference: saleId,
-        detail,
-        date,
-      });
-      closeModal();
-      render();
-      toast(`Venta ${saleId} registrada correctamente.`);
-    },
-  );
-  document
-    .querySelector("#field-productId")
-    .addEventListener("change", (event) => {
-      document.querySelector("#field-unitPrice").value =
-        productFor(event.target.value)?.price ?? "";
-    });
+.hero-visual {
+  position: absolute;
+  right: 7%;
+  top: -76px;
+  width: 340px;
+  height: 340px;
+  border: 1px solid rgba(213, 230, 109, 0.17);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
 }
-
-function invoiceProductOptions(selectedId) {
-  return data.products
-    .filter((product) => product.stock > 0)
-    .map(
-      (product) =>
-        `<option value="${escapeHtml(product.id)}" ${product.id === selectedId ? "selected" : ""}>${escapeHtml(product.name)} · ${product.stock} uds.</option>`,
-    )
-    .join("");
+.hero-ring {
+  position: absolute;
+  border: 1px solid rgba(213, 230, 109, 0.17);
+  border-radius: 50%;
 }
-
-function invoiceLineMarkup(index, selectedId) {
-  const product =
-    productFor(selectedId) || data.products.find((item) => item.stock > 0);
-  const removeButton =
-    index === 0
-      ? ""
-      : `<button type="button" class="invoice-remove-line" data-index="${index}" aria-label="Quitar artículo">×</button>`;
-  return `<div class="invoice-line" data-index="${index}"><div class="invoice-line-heading"><strong>Artículo ${String(index + 1).padStart(2, "0")}</strong>${removeButton}</div><div class="invoice-line-fields"><label class="form-field"><span>Producto</span><select name="productId-${index}" required>${invoiceProductOptions(product?.id)}</select></label><label class="form-field"><span>Cantidad</span><input name="quantity-${index}" type="number" min="1" max="${product?.stock || 1}" value="1" step="1" required></label><label class="form-field"><span>Precio neto</span><input name="netPrice-${index}" type="number" min="0" value="${product?.price || 0}" step="1" required></label></div></div>`;
+.ring-one {
+  inset: 26px;
 }
-
-function invoiceDraftTotals() {
-  const root = document.querySelector("#modal-root");
-  if (!root.querySelector("#invoice-lines")) return;
-  let subtotal = 0;
-  root.querySelectorAll(".invoice-line").forEach((line) => {
-    subtotal +=
-      (Number(line.querySelector('[name^="quantity-"]').value) || 0) *
-      (Number(line.querySelector('[name^="netPrice-"]').value) || 0);
-  });
-  const taxRate = Number(root.querySelector('[name="taxRate"]').value) || 0;
-  const tax = Math.round((subtotal * taxRate) / 100);
-  root.querySelector("#invoice-subtotal").textContent = money(subtotal);
-  root.querySelector("#invoice-tax").textContent = money(tax);
-  root.querySelector("#invoice-total").textContent = money(subtotal + tax);
+.ring-two {
+  inset: 59px;
+  border-style: dashed;
 }
-
-function localDateValue() {
-  const now = new Date();
-  return new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 10);
+.hero-orbit {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--lime);
+  top: 48px;
+  right: 68px;
+  box-shadow: 0 0 24px rgba(213, 230, 109, 0.45);
 }
-
-function showInvoiceForm() {
-  if (!data.products.some((product) => product.stock > 0))
-    return toast("No hay productos disponibles para facturar.");
-  const number = `F-${String(data.nextInvoice).padStart(5, "0")}`;
-  const fields =
-    field("Folio", "invoiceNumber", { value: number, full: true }) +
-    field("Fecha de emisión", "invoiceDate", {
-      type: "date",
-      value: localDateValue(),
-    }) +
-    field("Forma de pago", "paymentMethod", {
-      type: "select",
-      choices:
-        "<option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Crédito</option>",
-    }) +
-    field("Nombre o razón social del emisor", "issuerName", {
-      value: "NEYRA FERRETERÍA",
-      full: true,
-    }) +
-    field("RUT del emisor", "issuerRut", { placeholder: "76.123.456-7" }) +
-    field("Dirección del emisor", "issuerAddress", {
-      placeholder: "Dirección comercial",
-    }) +
-    field("Nombre o razón social del cliente", "customerName", {
-      placeholder: "Nombre del cliente",
-      full: true,
-    }) +
-    field("RUT del cliente", "customerRut", { placeholder: "12.345.678-9" }) +
-    field("Dirección del cliente", "customerAddress", {
-      placeholder: "Dirección del cliente",
-      required: false,
-    }) +
-    `<div class="form-field full"><div class="invoice-section-label"><label>Detalle de artículos</label><span>Precios netos, sin IVA</span></div><div id="invoice-lines">${invoiceLineMarkup(0, data.products.find((product) => product.stock > 0)?.id)}</div><button type="button" class="invoice-add-line" data-action="add-invoice-line">＋ Añadir artículo</button></div>` +
-    field("IVA (%)", "taxRate", {
-      type: "number",
-      min: "0",
-      step: "0.1",
-      value: "19",
-    }) +
-    field("Observaciones", "notes", {
-      placeholder: "Opcional",
-      required: false,
-    }) +
-    `<div class="invoice-totals form-field full"><div><span>Neto</span><strong id="invoice-subtotal">$0</strong></div><div><span>IVA</span><strong id="invoice-tax">$0</strong></div><div class="invoice-grand-total"><span>Total</span><strong id="invoice-total">$0</strong></div></div>`;
-  openModal(
-    "Emitir factura",
-    "Completa los datos del emisor y del cliente para generar el documento.",
-    fields,
-    "Emitir factura",
-    (values) => {
-      const lines = [
-        ...document.querySelectorAll("#invoice-lines .invoice-line"),
-      ].map((line) => ({
-        product: productFor(values[`productId-${line.dataset.index}`]),
-        quantity: Number(values[`quantity-${line.dataset.index}`]),
-        netPrice: Number(values[`netPrice-${line.dataset.index}`]),
-      }));
-      if (
-        lines.some(
-          (line) =>
-            !line.product ||
-            !Number.isInteger(line.quantity) ||
-            line.quantity < 1 ||
-            !Number.isFinite(line.netPrice) ||
-            line.netPrice < 0,
-        )
-      )
-        return toast("Revisa los artículos, cantidades y precios.");
-      const requested = new Map();
-      lines.forEach((line) =>
-        requested.set(
-          line.product.id,
-          (requested.get(line.product.id) || 0) + line.quantity,
-        ),
-      );
-      for (const [productId, quantity] of requested) {
-        const product = productFor(productId);
-        if (quantity > product.stock)
-          return toast(
-            `Stock insuficiente para ${product.name}: quedan ${product.stock} unidades.`,
-          );
-      }
-
-      const netSubtotal = lines.reduce(
-        (sum, line) => sum + line.quantity * line.netPrice,
-        0,
-      );
-      const taxRate = Number(values.taxRate);
-      const taxTotal = Math.round((netSubtotal * taxRate) / 100);
-      const invoice = {
-        id: `I-${Date.now()}`,
-        number: values.invoiceNumber,
-        date: values.invoiceDate,
-        issuerName: values.issuerName.trim(),
-        issuerRut: values.issuerRut.trim(),
-        issuerAddress: values.issuerAddress.trim(),
-        customerName: values.customerName.trim(),
-        customerRut: values.customerRut.trim(),
-        customerAddress: values.customerAddress.trim(),
-        paymentMethod: values.paymentMethod,
-        taxRate,
-        netSubtotal,
-        taxTotal,
-        total: netSubtotal + taxTotal,
-        notes: values.notes.trim(),
-        lines: lines.map((line) => ({
-          productId: line.product.id,
-          name: line.product.name,
-          sku: line.product.sku,
-          quantity: line.quantity,
-          netPrice: line.netPrice,
-          netTotal: line.quantity * line.netPrice,
-        })),
-      };
-      let allocatedTax = 0;
-      invoice.lines.forEach((line, index) => {
-        const lineTax =
-          index === invoice.lines.length - 1
-            ? taxTotal - allocatedTax
-            : netSubtotal
-              ? Math.round((taxTotal * line.netTotal) / netSubtotal)
-              : 0;
-        allocatedTax += lineTax;
-        line.total = line.netTotal + lineTax;
-        line.tax = lineTax;
-        const saleId = `V-${String(data.nextSale++).padStart(5, "0")}`;
-        const detail = `Factura ${invoice.number}`;
-        const date = new Date(`${invoice.date}T12:00:00`).toISOString();
-        productFor(line.productId).stock -= line.quantity;
-        data.sales.push({
-          id: saleId,
-          productId: line.productId,
-          quantity: line.quantity,
-          unitPrice: Math.round(line.total / line.quantity),
-          total: line.total,
-          date,
-          detail,
-        });
-        data.movements.push({
-          id: `M-${Date.now()}-${index}`,
-          productId: line.productId,
-          type: "Venta",
-          quantity: line.quantity,
-          reference: invoice.number,
-          detail,
-          date,
-        });
-      });
-      data.invoices.push(invoice);
-      data.nextInvoice += 1;
-      closeModal();
-      render();
-      showInvoicePreview(invoice);
-    },
-  );
-  const root = document.querySelector("#modal-root");
-  root.querySelector(".modal").classList.add("invoice-modal");
-  root.querySelector('[name="invoiceNumber"]').readOnly = true;
-  root
-    .querySelector("#invoice-lines")
-    .addEventListener("input", invoiceDraftTotals);
-  root.querySelector("#invoice-lines").addEventListener("change", (event) => {
-    if (event.target.name.startsWith("productId-")) {
-      const line = event.target.closest(".invoice-line");
-      const product = productFor(event.target.value);
-      line.querySelector('[name^="netPrice-"]').value = product?.price || 0;
-      line.querySelector('[name^="quantity-"]').max = product?.stock || 1;
-    }
-    invoiceDraftTotals();
-  });
-  root
-    .querySelector('[name="taxRate"]')
-    .addEventListener("input", invoiceDraftTotals);
-  root.querySelector(".modal").addEventListener("click", (event) => {
-    if (event.target.closest('[data-action="add-invoice-line"]')) {
-      const lines = root.querySelector("#invoice-lines");
-      const index = lines.querySelectorAll(".invoice-line").length;
-      lines.insertAdjacentHTML(
-        "beforeend",
-        invoiceLineMarkup(
-          index,
-          data.products.find((product) => product.stock > 0)?.id,
-        ),
-      );
-      invoiceDraftTotals();
-    }
-    if (event.target.closest('[data-action="remove-invoice-line"]')) {
-      event.target.closest(".invoice-line").remove();
-      root.querySelectorAll(".invoice-line").forEach((line, index) => {
-        line.dataset.index = index;
-        line.querySelector("strong").textContent =
-          `Artículo ${String(index + 1).padStart(2, "0")}`;
-        line.querySelectorAll("select,input").forEach((control) => {
-          control.name = control.name.replace(/-\d+$/, `-${index}`);
-        });
-        const removeButton = line.querySelector(".invoice-remove-line");
-        if (index === 0) removeButton?.remove();
-        else if (removeButton) removeButton.dataset.index = index;
-      });
-      invoiceDraftTotals();
-    }
-  });
-  invoiceDraftTotals();
+.hero-bars {
+  position: absolute;
+  bottom: 113px;
+  left: 92px;
+  height: 70px;
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  transform: rotate(-7deg);
 }
-
-function invoiceMarkup(invoice) {
-  const invoiceDate = new Intl.DateTimeFormat("es-CL", {
-    dateStyle: "long",
-  }).format(new Date(`${invoice.date}T12:00:00`));
-  return `<div class="invoice-paper-header"><div><span class="invoice-paper-brand">NEYRA</span><h1>Factura comercial</h1><p>Folio ${escapeHtml(invoice.number)}</p></div><div class="invoice-paper-date"><strong>Fecha de emisión</strong><span>${escapeHtml(invoiceDate)}</span></div></div><div class="invoice-party-grid"><section><span>EMISOR</span><strong>${escapeHtml(invoice.issuerName)}</strong><p>RUT: ${escapeHtml(invoice.issuerRut)}</p><p>${escapeHtml(invoice.issuerAddress)}</p></section><section><span>CLIENTE</span><strong>${escapeHtml(invoice.customerName)}</strong><p>RUT: ${escapeHtml(invoice.customerRut)}</p><p>${escapeHtml(invoice.customerAddress || "—")}</p></section></div><table><thead><tr><th>SKU</th><th>DESCRIPCIÓN</th><th>CANT.</th><th>PRECIO NETO</th><th>NETO</th></tr></thead><tbody>${invoice.lines.map((line) => `<tr><td>${escapeHtml(line.sku)}</td><td>${escapeHtml(line.name)}</td><td>${line.quantity}</td><td>${money(line.netPrice)}</td><td>${money(line.netTotal)}</td></tr>`).join("")}</tbody></table><div class="invoice-paper-bottom"><div><span>Forma de pago</span><strong>${escapeHtml(invoice.paymentMethod)}</strong>${invoice.notes ? `<span>Observaciones: ${escapeHtml(invoice.notes)}</span>` : ""}</div><div class="invoice-paper-totals"><div><span>Neto</span><strong>${money(invoice.netSubtotal)}</strong></div><div><span>IVA (${invoice.taxRate}%)</span><strong>${money(invoice.taxTotal)}</strong></div><div class="invoice-paper-grand"><span>Total</span><strong>${money(invoice.total)}</strong></div></div></div><p class="invoice-paper-legal">Documento comercial no tributario. No reemplaza una factura electrónica autorizada por el SII.</p>`;
+.hero-bars i {
+  width: 8px;
+  border-radius: 2px 2px 0 0;
+  background: rgba(213, 230, 109, 0.75);
 }
-
-function showInvoicePreview(invoice) {
-  const root = document.querySelector("#modal-root");
-  root.innerHTML = `<div class="modal-backdrop"><section class="modal invoice-success-modal" role="dialog" aria-modal="true" aria-labelledby="invoice-success-title"><header class="modal-head"><div><p class="eyebrow">DOCUMENTO EMITIDO</p><h2 id="invoice-success-title">Factura ${escapeHtml(invoice.number)}</h2><p>Registrada correctamente y descontada del inventario.</p></div><button class="modal-close" type="button" data-action="close-invoice-preview" aria-label="Cerrar">×</button></header><div class="invoice-success-body"><div><span>CLIENTE</span><strong>${escapeHtml(invoice.customerName)}</strong></div><div><span>ARTÍCULOS</span><strong>${invoice.lines.reduce((sum, line) => sum + line.quantity, 0)}</strong></div><div class="invoice-success-total"><span>TOTAL</span><strong>${money(invoice.total)}</strong></div><p>Documento comercial no tributario. Puedes imprimirlo o guardarlo como PDF.</p></div><div class="modal-actions"><button type="button" class="button-muted" data-action="close-invoice-preview">Cerrar</button><button type="button" class="button-submit" data-action="print-current-invoice">Imprimir / Guardar PDF</button></div></section></div>`;
-  root
-    .querySelectorAll('[data-action="close-invoice-preview"]')
-    .forEach((button) =>
-      button.addEventListener("click", () => closeInvoicePreview()),
-    );
-  root
-    .querySelector('[data-action="print-current-invoice"]')
-    .addEventListener("click", () => printInvoice(invoice));
-  root.querySelector(".modal-backdrop").addEventListener("click", (event) => {
-    if (event.target === event.currentTarget) closeInvoicePreview();
-  });
+.hero-bars i:nth-child(1) {
+  height: 19px;
 }
-
-function closeInvoicePreview() {
-  document.querySelector("#modal-root").innerHTML = "";
-  document.querySelector("#invoice-paper")?.remove();
+.hero-bars i:nth-child(2) {
+  height: 31px;
 }
-
-function printInvoice(invoice) {
-  let paper = document.querySelector("#invoice-paper");
-  if (!paper) {
-    paper = document.createElement("article");
-    paper.id = "invoice-paper";
-    document.body.append(paper);
+.hero-bars i:nth-child(3) {
+  height: 24px;
+}
+.hero-bars i:nth-child(4) {
+  height: 43px;
+}
+.hero-bars i:nth-child(5) {
+  height: 35px;
+}
+.hero-bars i:nth-child(6) {
+  height: 53px;
+}
+.hero-bars i:nth-child(7) {
+  height: 43px;
+}
+.hero-bars i:nth-child(8) {
+  height: 61px;
+}
+.hero-bars i:nth-child(9) {
+  height: 54px;
+}
+.hero-bars i:nth-child(10) {
+  height: 67px;
+}
+.hero-bars i:nth-child(11) {
+  height: 58px;
+}
+.hero-bars i:nth-child(12) {
+  height: 70px;
+  background: var(--lime);
+}
+.hero-visual-label {
+  position: absolute;
+  top: 179px;
+  left: 113px;
+  font:
+    700 7px/1.4 "Manrope",
+    sans-serif;
+  letter-spacing: 1px;
+  color: #b8c9bd;
+}
+.hero-foot {
+  position: absolute;
+  bottom: 17px;
+  left: 31px;
+  right: 31px;
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding-top: 10px;
+  color: #a6bdb0;
+  font-size: 8px;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin: 29px 0 14px;
+}
+.section-heading h2,
+.panel-heading h3 {
+  font:
+    700 16px "Manrope",
+    sans-serif;
+  letter-spacing: -0.35px;
+  margin: 0;
+  color: #26352d;
+}
+.section-heading .eyebrow,
+.panel-heading .eyebrow {
+  margin-bottom: 5px;
+}
+.text-button {
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 700;
+}
+.text-button span {
+  font-size: 14px;
+  margin-left: 4px;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.stat-card {
+  background: #fff;
+  border: 1px solid #e8ebe5;
+  min-height: 100px;
+  padding: 16px 17px;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #808b82;
+  font-size: 10px;
+}
+.stat-icon {
+  width: 25px;
+  height: 25px;
+  border-radius: 5px;
+  background: #edf4ed;
+  color: var(--green);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+}
+.stat-value {
+  font:
+    700 24px "Manrope",
+    sans-serif;
+  color: #25332b;
+  margin-top: 10px;
+  letter-spacing: -0.7px;
+}
+.stat-note {
+  font-size: 9px;
+  color: #9aa29c;
+  margin-top: 2px;
+}
+.stat-note strong {
+  color: #54765e;
+  font-weight: 600;
+}
+.dashboard-bottom {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.78fr) minmax(0, 1.5fr);
+  gap: 13px;
+  margin-top: 15px;
+}
+.panel {
+  background: white;
+  border: 1px solid #e8ebe5;
+  border-radius: 4px;
+  padding: 17px;
+}
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.panel-heading h3 {
+  font-size: 13px;
+}
+.count-badge {
+  background: #f3e5e1;
+  color: #a45445;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  display: grid;
+  place-items: center;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.low-stock-list,
+.recent-movements {
+  margin-top: 13px;
+}
+.low-stock-item,
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid #f0f2ee;
+}
+.low-stock-item:first-child,
+.recent-item:first-child {
+  border-top: 0;
+}
+.product-chip {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  background: #f0f2e9;
+  color: #65734b;
+  font:
+    700 10px "Manrope",
+    sans-serif;
+}
+.low-stock-meta,
+.recent-meta {
+  min-width: 0;
+  flex: 1;
+}
+.low-stock-meta strong,
+.recent-meta strong {
+  font-size: 10px;
+  font-weight: 600;
+  display: block;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.low-stock-meta span,
+.recent-meta span {
+  display: block;
+  margin-top: 3px;
+  color: #99a199;
+  font-size: 9px;
+}
+.low-stock-value {
+  font:
+    700 11px "Manrope",
+    sans-serif;
+  color: #a45a4b;
+}
+.movement-symbol {
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+.movement-symbol.in {
+  background: var(--green-soft);
+  color: var(--green);
+}
+.movement-symbol.out {
+  background: var(--red-soft);
+  color: var(--red);
+}
+.movement-symbol.sale {
+  background: #f1edf7;
+  color: #7752a1;
+}
+.recent-amount {
+  font:
+    600 10px "Manrope",
+    sans-serif;
+  white-space: nowrap;
+}
+.workspace-footer {
+  padding: 24px 0 19px;
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+  color: #a1aaa2;
+  font-size: 8px;
+  letter-spacing: 0.8px;
+}
+.footer-separator {
+  padding: 0 5px;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 14px;
+}
+.search-field {
+  height: 36px;
+  border: 1px solid #e1e6df;
+  background: white;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  color: #94a097;
+  min-width: 230px;
+}
+.search-field > span {
+  font-size: 17px;
+}
+.search-field input {
+  border: 0;
+  outline: none;
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  font-size: 10px;
+  color: var(--ink);
+}
+.search-field input::placeholder {
+  color: #a1aaa3;
+}
+.toolbar select {
+  height: 36px;
+  padding: 0 28px 0 10px;
+  border: 1px solid #e1e6df;
+  background: white;
+  border-radius: 4px;
+  font-size: 10px;
+  color: #59665c;
+  outline: 0;
+}
+.toolbar-count {
+  font-size: 9px;
+  color: #9aa29c;
+  margin-left: auto;
+}
+.table-panel {
+  background: white;
+  border: 1px solid #e8ebe5;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  text-align: left;
+  white-space: nowrap;
+}
+thead {
+  background: #fafbf9;
+}
+th {
+  height: 38px;
+  padding: 0 14px;
+  color: #939d94;
+  font-size: 8px;
+  letter-spacing: 0.75px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--line);
+}
+td {
+  height: 55px;
+  padding: 0 14px;
+  border-bottom: 1px solid #eff1ed;
+  font-size: 10px;
+  color: #59655c;
+}
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+td strong {
+  font-size: 10px;
+  font-weight: 600;
+  color: #29372e;
+}
+td small {
+  display: block;
+  font-size: 9px;
+  color: #9aa39c;
+  margin-top: 3px;
+}
+.sku {
+  color: #929b93;
+  font:
+    10px "DM Sans",
+    sans-serif;
+}
+.stock-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stock-track {
+  width: 42px;
+  height: 4px;
+  border-radius: 5px;
+  background: #e9eee8;
+  overflow: hidden;
+}
+.stock-fill {
+  height: 100%;
+  background: #78a77d;
+  border-radius: 5px;
+}
+.stock-fill.low {
+  background: #dcaa63;
+}
+.stock-fill.empty {
+  background: #d67d70;
+}
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 3px;
+  padding: 5px 7px;
+  font-size: 9px;
+  font-weight: 600;
+}
+.status:before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.status.ok {
+  background: #edf5ee;
+  color: #4f8059;
+}
+.status.low {
+  background: #faf2e4;
+  color: #9a742b;
+}
+.status.out {
+  background: #fbefed;
+  color: #b34c44;
+}
+.row-menu {
+  border: 0;
+  background: transparent;
+  color: #9da69e;
+  font-size: 17px;
+  padding: 5px 8px;
+}
+.empty-state {
+  padding: 35px 20px;
+  text-align: center;
+  color: #929b94;
+  font-size: 11px;
+}
+.hidden {
+  display: none !important;
+}
+.compact-stats {
+  margin: 2px 0 15px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.compact-stats .stat-card {
+  min-height: 88px;
+}
+.compact-stats .stat-value {
+  font-size: 21px;
+  margin-top: 8px;
+}
+.sales-table-panel .panel-heading {
+  padding: 15px 14px;
+}
+.sales-table-panel .table-scroll {
+  border-top: 1px solid #eff1ed;
+}
+.compact-search {
+  min-width: 185px;
+  width: 210px;
+  height: 31px;
+}
+.history-summary {
+  display: flex;
+  gap: 23px;
+  align-items: center;
+  margin: 1px 0 15px;
+  padding: 14px 17px;
+  background: #eaf1eb;
+  border: 1px solid #dfe9df;
+  border-radius: 4px;
+}
+.history-metric {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+.history-metric strong {
+  font:
+    700 17px "Manrope",
+    sans-serif;
+  color: #315a3d;
+}
+.history-metric span {
+  font-size: 9px;
+  color: #738476;
+}
+.history-summary .history-divider {
+  height: 24px;
+  width: 1px;
+  background: #d3e0d5;
+}
+.report-range {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 19px 21px;
+  background: #eaf1eb;
+  border: 1px solid #dfe9df;
+  border-radius: 4px;
+  margin-bottom: 13px;
+}
+.report-range h2 {
+  font:
+    700 17px "Manrope",
+    sans-serif;
+  margin: 0 0 5px;
+  color: #294233;
+}
+.report-range p:last-child {
+  font-size: 10px;
+  color: #77877b;
+  margin: 0;
+}
+.report-range .eyebrow {
+  margin-bottom: 5px;
+}
+.report-mark {
+  font:
+    800 33px "Manrope",
+    sans-serif;
+  color: var(--green);
+  letter-spacing: -2px;
+}
+.report-mark span {
+  color: #a7bf55;
+}
+.report-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 13px;
+  margin-top: 14px;
+}
+.report-products {
+  margin-top: 9px;
+}
+.report-product {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid #eff1ed;
+}
+.report-product:first-child {
+  border-top: 0;
+}
+.report-rank {
+  font:
+    700 10px "Manrope",
+    sans-serif;
+  color: #a3aca4;
+}
+.report-product strong {
+  font-size: 10px;
+  font-weight: 600;
+}
+.report-product small {
+  display: block;
+  color: #9aa39c;
+  font-size: 9px;
+  margin-top: 3px;
+}
+.report-product-value {
+  font:
+    600 10px "Manrope",
+    sans-serif;
+}
+.report-note {
+  font-size: 9px;
+  color: #a0a8a0;
+  margin: 13px 0;
+}
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(22, 35, 27, 0.42);
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  animation: fade-in 0.15s ease;
+}
+.modal {
+  background: #fff;
+  width: min(100%, 450px);
+  border-radius: 5px;
+  box-shadow: var(--shadow);
+  animation: rise-in 0.2s ease;
+}
+.modal-head {
+  padding: 20px 22px 15px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.modal-head h2 {
+  font:
+    700 19px "Manrope",
+    sans-serif;
+  margin: 0;
+  letter-spacing: -0.4px;
+}
+.modal-head p {
+  font-size: 10px;
+  color: #89938b;
+  margin: 5px 0 0;
+}
+.modal-close {
+  border: 0;
+  background: transparent;
+  color: #818b83;
+  font-size: 20px;
+  padding: 0 3px;
+}
+.modal-form {
+  padding: 17px 22px 20px;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.form-field {
+  display: grid;
+  gap: 6px;
+}
+.form-field.full {
+  grid-column: 1/-1;
+}
+.form-field label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #58665c;
+}
+.form-field input,
+.form-field select {
+  height: 37px;
+  border: 1px solid #dfe5df;
+  border-radius: 3px;
+  padding: 0 10px;
+  outline: 0;
+  color: #344139;
+  background: white;
+  font-size: 11px;
+}
+.form-field input:focus,
+.form-field select:focus {
+  border-color: #6e9a79;
+  box-shadow: 0 0 0 2px #e9f2eb;
+}
+.form-field input::placeholder {
+  color: #adb5ae;
+}
+.form-hint {
+  font-size: 9px;
+  color: #929b94;
+  line-height: 1.5;
+  margin: 0;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+.button-muted {
+  height: 36px;
+  padding: 0 13px;
+  background: white;
+  border: 1px solid #e0e5df;
+  color: #657068;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.button-submit {
+  height: 36px;
+  padding: 0 15px;
+  background: var(--green);
+  border: 0;
+  color: white;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.toast {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translate(-50%, 12px);
+  background: #253d30;
+  color: white;
+  padding: 11px 16px;
+  border-radius: 4px;
+  font-size: 11px;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.18s,
+    transform 0.18s;
+  z-index: 20;
+}
+.toast.visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
   }
-  paper.innerHTML = invoiceMarkup(invoice);
-  document.body.classList.add("printing-invoice");
-  window.print();
-  document.body.classList.remove("printing-invoice");
+  to {
+    opacity: 1;
+  }
 }
-
-function printSavedInvoice(id) {
-  const invoice = data.invoices.find((item) => item.id === id);
-  if (invoice) printInvoice(invoice);
+@media (max-width: 1100px) {
+  :root {
+    --nav-width: 215px;
+  }
+  .workspace {
+    padding: 0 29px;
+  }
+  .dashboard-bottom {
+    grid-template-columns: 1fr 1.3fr;
+  }
+  .hero-visual {
+    right: 0;
+  }
+  .stats-grid {
+    gap: 9px;
+  }
+  .stat-card {
+    padding: 14px;
+  }
+  .stat-value {
+    font-size: 21px;
+  }
 }
-
-function showProductActions(id) {
-  const product = productFor(id);
-  if (!product) return;
-  const choices = data.products
-    .map(
-      (item) =>
-        `<option value="${escapeHtml(item.id)}" ${item.id === id ? "selected" : ""}>${escapeHtml(item.name)} · ${item.stock} uds.</option>`,
-    )
-    .join("");
-  const fields =
-    field("Producto", "productId", { type: "select", choices }) +
-    field("Tipo de ajuste", "type", {
-      type: "select",
-      choices:
-        '<option value="Entrada">Agregar unidades</option><option value="Salida">Quitar unidades</option><option value="Modificar">Fijar cantidad exacta</option>',
-    }) +
-    field("Cantidad", "quantity", {
-      type: "number",
-      min: "0",
-      step: "1",
-      value: String(product.stock),
-    }) +
-    field("Referencia", "reference", {
-      placeholder: "Opcional",
-      required: false,
-      full: true,
-    });
-  openModal(
-    "Ajustar existencias",
-    product.name,
-    fields,
-    "Guardar ajuste",
-    (values) => {
-      const selected = productFor(values.productId);
-      const quantity = Number(values.quantity);
-      if (!selected || !Number.isInteger(quantity) || quantity < 0)
-        return toast("Ingresa una cantidad válida.");
-      if (values.type === "Salida" && quantity > selected.stock)
-        return toast(`Solo hay ${selected.stock} unidades disponibles.`);
-      const previousStock = selected.stock;
-      selected.stock =
-        values.type === "Modificar"
-          ? quantity
-          : values.type === "Entrada"
-            ? selected.stock + quantity
-            : selected.stock - quantity;
-      data.movements.push({
-        id: `M-${Date.now()}`,
-        productId: selected.id,
-        type: values.type === "Modificar" ? "Ajuste" : values.type,
-        quantity:
-          values.type === "Modificar"
-            ? Math.abs(selected.stock - previousStock)
-            : quantity,
-        reference:
-          values.reference.trim() ||
-          `AJ-${String(data.movements.length + 1).padStart(4, "0")}`,
-        detail:
-          values.type === "Modificar"
-            ? `Cantidad fijada en ${selected.stock} unidades`
-            : values.type === "Entrada"
-              ? "Ajuste por ingreso de stock"
-              : "Ajuste por salida de stock",
-        date: new Date().toISOString(),
-      });
-      closeModal();
-      render();
-      toast("Existencias actualizadas y movimiento registrado.");
-    },
-  );
+@media (max-width: 780px) {
+  :root {
+    --nav-width: 0px;
+  }
+  .side-nav {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 62px;
+    padding: 5px 8px calc(5px + env(safe-area-inset-bottom));
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+  }
+  .side-nav > .brand,
+  .nav-caption,
+  .nav-bottom {
+    display: none;
+  }
+  .side-nav nav {
+    display: contents;
+  }
+  .nav-link {
+    height: 50px;
+    min-width: 0;
+    flex: 1;
+    justify-content: center;
+    gap: 3px;
+    padding: 3px 1px;
+    flex-direction: column;
+    font-size: 8px;
+    border-radius: 4px;
+  }
+  .nav-icon {
+    font-size: 16px;
+    height: 17px;
+  }
+  .nav-active-mark {
+    top: auto;
+    bottom: 0;
+    left: calc(50% - 11px);
+    width: 22px;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+  }
+  .workspace {
+    margin: 0;
+    padding: 0 23px 75px;
+  }
+  .topbar {
+    height: 56px;
+  }
+  .brand-mobile {
+    display: flex;
+    font-size: 15px;
+  }
+  .brand-mobile .brand-mark {
+    width: 25px;
+    height: 25px;
+    font-size: 14px;
+  }
+  .breadcrumb {
+    margin-right: auto;
+    margin-left: 14px;
+  }
+  .topbar-right > span:not(.live-dot) {
+    display: none;
+  }
+  .topbar-right .avatar {
+    width: 27px;
+    height: 27px;
+  }
+  .page-heading {
+    padding: 27px 0 19px;
+  }
+  .page-heading h1 {
+    font-size: 25px;
+  }
+  .hero-banner {
+    height: 202px;
+    padding-left: 23px;
+  }
+  .hero-copy h2 {
+    font-size: 22px;
+  }
+  .hero-visual {
+    right: -120px;
+    opacity: 0.75;
+  }
+  .hero-foot {
+    left: 23px;
+    right: 23px;
+  }
+  .dashboard-bottom {
+    grid-template-columns: 1fr;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .stat-card {
+    min-height: 93px;
+  }
+  .report-grid {
+    grid-template-columns: 1fr;
+  }
+  .workspace-footer {
+    padding-bottom: 4px;
+  }
+  .workspace-footer span:last-child {
+    display: none;
+  }
+  .toolbar {
+    flex-wrap: wrap;
+  }
+  .toolbar-count {
+    margin-left: 0;
+  }
+  .report-range {
+    padding: 15px;
+  }
+  .table-panel {
+    margin-bottom: 5px;
+  }
 }
-
-function showExpenseForm() {
-  const fields =
-    field("Descripción", "description", {
-      placeholder: "Ej. Compra de cartuchos",
-      full: true,
-    }) +
-    field("Categoría", "category", {
-      placeholder: "Ej. Compra, transporte, sueldo",
-      full: true,
-    }) +
-    field("Monto", "amount", { type: "number", min: "0", step: "0.01" }) +
-    field("Fecha", "date", { type: "date", value: localDateValue() });
-  openModal(
-    "Registrar gasto",
-    "Añade un egreso para analizarlo en los reportes.",
-    fields,
-    "Guardar gasto",
-    (values) => {
-      const amount = Number(values.amount);
-      if (
-        !values.description.trim() ||
-        !values.category.trim() ||
-        !Number.isFinite(amount) ||
-        amount < 0
-      )
-        return toast("Revisa la descripción, categoría y monto.");
-      data.expenses.push({
-        id: `G-${Date.now()}`,
-        description: values.description.trim(),
-        category: values.category.trim(),
-        amount,
-        date: new Date(`${values.date}T12:00:00`).toISOString(),
-      });
-      closeModal();
-      render();
-      toast("Gasto registrado correctamente.");
-    },
-  );
+@media (max-width: 480px) {
+  .workspace {
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+  .page-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .page-heading > .button {
+    align-self: flex-start;
+  }
+  .page-heading h1 {
+    font-size: 23px;
+  }
+  .heading-copy {
+    font-size: 11px;
+  }
+  .topbar-right {
+    gap: 2px;
+  }
+  .breadcrumb {
+    font-size: 10px;
+    gap: 7px;
+  }
+  .hero-banner {
+    height: 190px;
+    padding-left: 18px;
+  }
+  .hero-copy h2 {
+    font-size: 19px;
+  }
+  .hero-copy p {
+    font-size: 10px;
+  }
+  .hero-visual {
+    right: -180px;
+    opacity: 0.5;
+  }
+  .hero-foot {
+    left: 18px;
+    right: 18px;
+  }
+  .section-heading {
+    margin-top: 23px;
+  }
+  .section-heading h2 {
+    font-size: 14px;
+  }
+  .stats-grid {
+    gap: 7px;
+  }
+  .stat-card {
+    padding: 12px 11px;
+    min-height: 86px;
+  }
+  .stat-top {
+    font-size: 9px;
+  }
+  .stat-value {
+    font-size: 20px;
+  }
+  .stat-note {
+    font-size: 8px;
+  }
+  .toolbar {
+    gap: 7px;
+  }
+  .toolbar .search-field {
+    width: 100%;
+    min-width: 100%;
+  }
+  .toolbar select {
+    flex: 1;
+  }
+  .toolbar-count {
+    font-size: 9px;
+  }
+  .panel {
+    padding: 14px;
+  }
+  .history-summary {
+    gap: 11px;
+    justify-content: space-between;
+    padding: 12px;
+  }
+  .history-metric {
+    display: block;
+  }
+  .history-metric strong {
+    display: block;
+    font-size: 15px;
+  }
+  .history-metric span {
+    font-size: 8px;
+  }
+  .history-summary .history-divider {
+    height: 27px;
+  }
+  .report-range h2 {
+    font-size: 15px;
+  }
+  .report-mark {
+    font-size: 27px;
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .form-field.full {
+    grid-column: auto;
+  }
+  .modal-form {
+    padding: 15px;
+  }
+  .modal-head {
+    padding: 17px 17px 13px;
+  }
+  .nav-link {
+    font-size: 7px;
+  }
 }
-
-function printReport() {
-  const totalUnits = data.products.reduce(
-    (sum, product) => sum + product.stock,
-    0,
-  );
-  const inventoryValue = data.products.reduce(
-    (sum, product) => sum + product.stock * product.cost,
-    0,
-  );
-  const salesTotal = data.sales.reduce((sum, sale) => sum + sale.total, 0);
-  const lowStock = data.products.filter(
-    (product) => product.stock <= product.minStock,
-  );
-  const movements = [...data.movements].sort(
-    (a, b) => new Date(b.date) - new Date(a.date),
-  );
-  const report = document.createElement("article");
-  report.id = "report-paper";
-  report.innerHTML = `<p class="eyebrow">NEYRA · CONTROL DE INVENTARIO</p><h1>Reporte de stock y ventas</h1><p class="print-subtitle">Generado el ${escapeHtml(dateTime.format(new Date()))} · Período completo</p><div class="print-kpis"><div class="print-kpi"><span>Productos</span><strong>${data.products.length}</strong></div><div class="print-kpi"><span>Unidades disponibles</span><strong>${currency.format(totalUnits)}</strong></div><div class="print-kpi"><span>Valor en bodega</span><strong>${money(inventoryValue)}</strong></div><div class="print-kpi"><span>Ventas acumuladas</span><strong>${money(salesTotal)}</strong></div></div><h2>Inventario actual</h2><table><thead><tr><th>PRODUCTO</th><th>SKU</th><th>CATEGORÍA</th><th>STOCK</th><th>MÍNIMO</th><th>PRECIO</th><th>ESTADO</th></tr></thead><tbody>${data.products.map((product) => `<tr><td>${escapeHtml(product.name)}</td><td>${escapeHtml(product.sku)}</td><td>${escapeHtml(product.category)}</td><td>${product.stock}</td><td>${product.minStock}</td><td>${money(product.price)}</td><td>${product.stock <= 0 ? "Agotado" : product.stock <= product.minStock ? "Stock bajo" : "En stock"}</td></tr>`).join("")}</tbody></table><h2>Movimientos recientes</h2><table><thead><tr><th>FECHA</th><th>PRODUCTO</th><th>TIPO</th><th>CANTIDAD</th><th>REFERENCIA</th><th>DETALLE</th></tr></thead><tbody>${
-    movements
-      .slice(0, 30)
-      .map(
-        (movement) =>
-          `<tr><td>${escapeHtml(dateTime.format(new Date(movement.date)))}</td><td>${escapeHtml(productFor(movement.productId)?.name || "Producto eliminado")}</td><td>${escapeHtml(movement.type)}</td><td>${movement.type === "Entrada" ? "+" : "−"}${movement.quantity}</td><td>${escapeHtml(movement.reference)}</td><td>${escapeHtml(movement.detail)}</td></tr>`,
-      )
-      .join("") || '<tr><td colspan="6">Sin movimientos registrados</td></tr>'
-  }</tbody></table><h2>Ventas</h2><table><thead><tr><th>FECHA</th><th>VENTA</th><th>PRODUCTO</th><th>UNIDADES</th><th>PRECIO UNITARIO</th><th>TOTAL</th></tr></thead><tbody>${
-    [...data.sales]
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .map(
-        (sale) =>
-          `<tr><td>${escapeHtml(dateTime.format(new Date(sale.date)))}</td><td>${escapeHtml(sale.id)}</td><td>${escapeHtml(productFor(sale.productId)?.name || "Producto eliminado")}</td><td>${sale.quantity}</td><td>${money(sale.unitPrice)}</td><td>${money(sale.total)}</td></tr>`,
-      )
-      .join("") || '<tr><td colspan="6">Sin ventas registradas</td></tr>'
-  }</tbody></table><p class="print-footer">${lowStock.length} productos con stock bajo o agotado · Reporte generado localmente por Neyra.</p>`;
-  document.querySelector("#report-paper")?.remove();
-  document.body.append(report);
-  document.body.classList.add("printing");
-  window.print();
-  document.body.classList.remove("printing");
-  report.remove();
+@media print {
+  body {
+    background: #fff !important;
+    color: #202a24 !important;
+  }
+  .app-shell,
+  .modal-backdrop,
+  .toast {
+    display: none !important;
+  }
+  body.printing #report-paper {
+    display: block !important;
+  }
+  #report-paper {
+    font-family: "DM Sans", Arial, sans-serif;
+    color: #243229;
+    padding: 25px;
+  }
+  #report-paper h1 {
+    font:
+      700 26px "Manrope",
+      Arial,
+      sans-serif;
+    margin: 0 0 4px;
+  }
+  #report-paper h2 {
+    font:
+      700 15px "Manrope",
+      Arial,
+      sans-serif;
+    border-bottom: 1px solid #dfe5df;
+    padding-bottom: 8px;
+    margin: 22px 0 8px;
+  }
+  #report-paper .print-subtitle {
+    font-size: 11px;
+    color: #768078;
+    margin: 0 0 25px;
+  }
+  #report-paper .print-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  #report-paper .print-kpi {
+    border: 1px solid #dfe5df;
+    padding: 13px;
+    border-radius: 3px;
+  }
+  #report-paper .print-kpi span {
+    display: block;
+    color: #768078;
+    font-size: 9px;
+  }
+  #report-paper .print-kpi strong {
+    display: block;
+    font:
+      700 18px "Manrope",
+      Arial,
+      sans-serif;
+    margin-top: 7px;
+  }
+  #report-paper table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  #report-paper th,
+  #report-paper td {
+    height: auto;
+    padding: 8px 6px;
+    border-bottom: 1px solid #e5e9e4;
+    text-align: left;
+    font-size: 9px;
+  }
+  #report-paper th {
+    font-size: 8px;
+    color: #758078;
+  }
+  #report-paper .print-footer {
+    margin-top: 30px;
+    font-size: 8px;
+    color: #8b948c;
+  }
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
 }
-
-document.addEventListener("click", (event) => {
-  const viewButton = event.target.closest("[data-view]");
-  if (viewButton) return showView(viewButton.dataset.view);
-  const actionButton = event.target.closest("[data-action]");
-  if (!actionButton) return;
-  if (actionButton.dataset.action === "new-product") showProductForm();
-  if (actionButton.dataset.action === "new-movement") showMovementForm();
-  if (actionButton.dataset.action === "new-sale") showSaleForm();
-  if (actionButton.dataset.action === "new-expense") showExpenseForm();
-  if (actionButton.dataset.action === "close-modal") closeModal();
-  if (actionButton.dataset.action === "product-menu")
-    showProductActions(actionButton.dataset.id);
-  if (actionButton.dataset.action === "print-invoice")
-    printSavedInvoice(actionButton.dataset.id);
-});
-
-document
-  .querySelector("#inventory-search")
-  .addEventListener("input", renderInventory);
-document
-  .querySelector("#inventory-filter")
-  .addEventListener("change", renderInventory);
-document
-  .querySelector("#movement-search")
-  .addEventListener("input", renderMovements);
-document
-  .querySelector("#movement-filter")
-  .addEventListener("change", renderMovements);
-document
-  .querySelector("#history-search")
-  .addEventListener("input", renderHistory);
-document
-  .querySelector("#history-filter")
-  .addEventListener("change", renderHistory);
-document.querySelector("#sales-search").addEventListener("input", renderSales);
-document
-  .querySelector("#report-period")
-  .addEventListener("change", renderReports);
-document
-  .querySelector("#report-start")
-  .addEventListener("change", renderReports);
-document.querySelector("#report-end").addEventListener("change", renderReports);
-document.querySelector("#print-report").addEventListener("click", printReport);
-document
-  .querySelector("#new-expense")
-  .addEventListener("click", showExpenseForm);
-document
-  .querySelector("#new-invoice")
-  .addEventListener("click", showInvoiceForm);
-document.addEventListener("keydown", (event) => {
-  if (event.key !== "Escape") return;
-  if (document.querySelector('[data-action="print-current-invoice"]'))
-    closeInvoicePreview();
-  else closeModal();
-});
-
-render();
+#report-paper {
+  display: none;
+}
+.report-controls {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+  padding: 16px;
+  margin: 14px 0;
+}
+.report-controls-group {
+  display: grid;
+  gap: 6px;
+}
+.report-controls label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: #6e7d8b;
+  text-transform: uppercase;
+}
+.report-controls input,
+.report-controls select {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+}
+.chart-panel {
+  margin: 16px 0;
+}
+.chart-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+.chart-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  color: #6e7d8b;
+  font-size: 11px;
+}
+.chart-legend span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.legend-dot.revenue {
+  background: #1555a6;
+}
+.legend-dot.expense {
+  background: #d36a5d;
+}
+.legend-dot.profit {
+  background: #2a9d7d;
+}
+#financial-chart {
+  width: 100%;
+  min-width: 640px;
+  height: 260px;
+  display: block;
+}
+.chart-grid line {
+  stroke: #e6edf4;
+  stroke-width: 1;
+}
+.chart-grid text {
+  fill: #8a9aa8;
+  font-size: 10px;
+}
+#financial-chart path:nth-child(1) {
+  filter: drop-shadow(0 3px 6px rgba(21, 85, 166, 0.18));
+}
+.currency-tag {
+  background: var(--green-soft);
+  color: var(--green);
+  padding: 6px 10px;
+  border-radius: 999px;
+  font:
+    700 11px "Manrope",
+    sans-serif;
+}
+.side-nav > .brand,
+.brand-mobile {
+  background: var(--green);
+  color: #fff;
+  border-radius: 5px;
+}
+.side-nav > .brand {
+  padding: 8px 10px;
+  margin: 0 0 30px;
+}
+.brand-mobile {
+  padding: 3px 9px 3px 3px;
+}
+.brand-mark {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+.heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.invoice-table-panel {
+  margin-top: 14px;
+}
+.invoice-table-panel > .panel-heading {
+  padding: 15px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.invoice-print-button {
+  height: 29px;
+  padding: 0 9px;
+  font-size: 9px;
+}
+.invoice-legal-note {
+  margin: 11px 0 0;
+  color: #8995a2;
+  font-size: 9px;
+}
+.invoice-modal {
+  width: min(100%, 680px);
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+}
+.invoice-modal .modal-form {
+  overflow-y: auto;
+}
+.invoice-section-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.invoice-section-label label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #58665c;
+}
+.invoice-section-label span {
+  font-size: 9px;
+  color: #8995a2;
+}
+.invoice-line {
+  border: 1px solid var(--line);
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  background: #fbfcfe;
+}
+.invoice-line-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.invoice-line-heading strong {
+  font-size: 9px;
+  color: #657387;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.invoice-line-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(75px, 0.65fr) minmax(110px, 1fr);
+  gap: 8px;
+}
+.invoice-line-fields .form-field {
+  min-width: 0;
+}
+.invoice-line-fields input,
+.invoice-line-fields select {
+  width: 100%;
+  min-width: 0;
+}
+.invoice-remove-line {
+  border: 0;
+  background: transparent;
+  color: #8995a2;
+  font-size: 17px;
+  line-height: 1;
+  padding: 1px 5px;
+}
+.invoice-add-line {
+  border: 0;
+  background: transparent;
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 0;
+}
+.invoice-totals {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  background: #f2f6fc;
+  padding: 11px;
+  border-radius: 4px;
+}
+.invoice-totals > div {
+  display: grid;
+  gap: 5px;
+}
+.invoice-totals span {
+  font-size: 9px;
+  color: #7c8998;
+}
+.invoice-totals strong {
+  font:
+    700 13px "Manrope",
+    sans-serif;
+  color: #2a394b;
+}
+.invoice-totals .invoice-grand-total {
+  text-align: right;
+}
+.invoice-totals .invoice-grand-total strong {
+  font-size: 17px;
+  color: var(--green);
+}
+.invoice-success-modal {
+  width: min(100%, 450px);
+  padding-bottom: 18px;
+}
+.invoice-success-body {
+  padding: 16px 22px 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 15px;
+}
+.invoice-success-body > div {
+  display: grid;
+  gap: 5px;
+}
+.invoice-success-body span {
+  font-size: 8px;
+  color: #8290a0;
+  letter-spacing: 0.8px;
+  font-weight: 700;
+}
+.invoice-success-body strong {
+  font-size: 11px;
+  color: #2b3b4d;
+}
+.invoice-success-body .invoice-success-total {
+  grid-column: 1/-1;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.invoice-success-body .invoice-success-total strong {
+  font:
+    700 20px "Manrope",
+    sans-serif;
+  color: var(--green);
+}
+.invoice-success-body > p {
+  grid-column: 1/-1;
+  color: #8995a2;
+  font-size: 9px;
+  margin: 0;
+}
+.invoice-success-modal > .modal-actions {
+  padding: 0 22px;
+}
+#invoice-paper {
+  display: none;
+}
+@media (max-width: 600px) {
+  .heading-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .invoice-line-fields {
+    grid-template-columns: minmax(0, 1fr) 74px;
+  }
+  .invoice-line-fields .form-field:last-child {
+    grid-column: 1/-1;
+  }
+  .invoice-success-body {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .invoice-success-modal > .modal-actions {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+@media print {
+  body.printing-invoice #invoice-paper {
+    display: block !important;
+  }
+  #invoice-paper {
+    font-family: "DM Sans", Arial, sans-serif;
+    color: #253348;
+    padding: 20px;
+  }
+  #invoice-paper .invoice-paper-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 3px solid #1555a6;
+    padding-bottom: 17px;
+  }
+  #invoice-paper .invoice-paper-brand {
+    display: inline-block;
+    background: #1555a6;
+    color: white;
+    padding: 7px 10px;
+    border-radius: 3px;
+    font:
+      800 15px "Manrope",
+      Arial,
+      sans-serif;
+    letter-spacing: 0.4px;
+  }
+  #invoice-paper h1 {
+    font:
+      700 23px "Manrope",
+      Arial,
+      sans-serif;
+    margin: 14px 0 3px;
+  }
+  #invoice-paper .invoice-paper-header p,
+  #invoice-paper .invoice-paper-date span {
+    font-size: 10px;
+    color: #718095;
+    margin: 0;
+  }
+  #invoice-paper .invoice-paper-date {
+    display: grid;
+    gap: 5px;
+    text-align: right;
+    font-size: 10px;
+  }
+  #invoice-paper .invoice-party-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+    padding: 20px 0;
+  }
+  #invoice-paper .invoice-party-grid section {
+    display: grid;
+    gap: 5px;
+  }
+  #invoice-paper .invoice-party-grid section > span {
+    font-size: 8px;
+    letter-spacing: 1px;
+    color: #718095;
+    font-weight: 700;
+  }
+  #invoice-paper .invoice-party-grid strong {
+    font-size: 12px;
+  }
+  #invoice-paper .invoice-party-grid p {
+    font-size: 9px;
+    margin: 0;
+    color: #59697d;
+  }
+  #invoice-paper table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  #invoice-paper th,
+  #invoice-paper td {
+    height: auto;
+    padding: 9px 6px;
+    border-bottom: 1px solid #e1e8f0;
+    text-align: left;
+    font-size: 9px;
+  }
+  #invoice-paper th {
+    font-size: 8px;
+    color: #718095;
+  }
+  #invoice-paper .invoice-paper-bottom {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    padding-top: 18px;
+  }
+  #invoice-paper .invoice-paper-bottom > div:first-child {
+    display: grid;
+    align-content: start;
+    gap: 6px;
+    font-size: 9px;
+  }
+  #invoice-paper .invoice-paper-bottom > div:first-child span {
+    color: #718095;
+  }
+  #invoice-paper .invoice-paper-totals {
+    width: 235px;
+    display: grid;
+    gap: 7px;
+  }
+  #invoice-paper .invoice-paper-totals > div {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+  }
+  #invoice-paper .invoice-paper-grand {
+    border-top: 2px solid #1555a6;
+    padding-top: 9px;
+    font-size: 13px !important;
+    font-weight: 700;
+  }
+  #invoice-paper .invoice-paper-legal {
+    margin-top: 34px;
+    padding-top: 10px;
+    border-top: 1px solid #e1e8f0;
+    color: #8995a2;
+    font-size: 8px;
+  }
+}
